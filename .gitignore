@@ -1,0 +1,5 @@
+# Pythonバイトコード
+__pycache__/
+
+# 仮想環境
+.venv/
