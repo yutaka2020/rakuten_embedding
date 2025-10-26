@@ -1,20 +1,27 @@
 import requests
 import os
 from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from db_setup import DATABASE_URL,Session_Local
+from models import Base,Product
 
 # .env読み込み
 load_dotenv()
 APPLICATION_ID = os.getenv("RAKUTEN_APPLICATION_ID")
-API_URL = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706"
+DATABASE_URL = os.getenv("DATABASE_URL")
+API_URL = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601"
+engine = create_engine(DATABASE_URL, future=True)
 
 def fetch_items(keyword , pages):
     result = []
     params = {
-    "applicationId": APPLICATION_ID,
-    "keyword": keyword,  # キーワード検索
-    "hits":5,            # 取得件数
-    "page": pages
-}
+"applicationId": APPLICATION_ID,
+            "keyword": keyword,
+            "hits": 30,
+            "page": pages,
+            "imageFlag": 1,
+            "format": "json",
+            "availability": 1,}
     response = requests.get(API_URL, params=params)
 
     # エラーハンドリング
@@ -27,12 +34,26 @@ def fetch_items(keyword , pages):
     for i in items:
         item = i.get("Item",{})
         result.append({
-            "product_name": item.get("itemUrl", ""),
+                "product_id": item.get("itemCode", ""),
+                "product_name": item.get("itemName", ""),
+                "image_url": item["mediumImageUrls"][0]["imageUrl"],
+                "product_url": item.get("itemUrl", ""),
+                "price": item.get("itemPrice", 0),
+                "shop_name": item.get("shopName", "")
         })
     return result
 
 def save_to_db(items):
-    print(items)
+    Base.metadata.create_all(bind=engine)
+    session = Session_Local()
+    try:
+        for item in items:
+            product = Product(**item)
+            session.add(product)
+        session.commit()
+        print("✅ データ保存完了！")
+    finally:
+        session.close()
 
 def main():
     assert APPLICATION_ID, " .env に RAKUTEN_APPLICATION_ID が設定されていません"
