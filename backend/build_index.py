@@ -1,5 +1,7 @@
 import io
 import requests
+from sqlalchemy.orm import Session
+from models import Product
 from db_setup import DATABASE_URL
 from sqlalchemy import create_engine
 from transformers import CLIPProcessor, CLIPModel
@@ -21,8 +23,11 @@ def fetch_image(url):
         return None
 
 def main():
-    img = fetch_image("https://thumbnail.image.rakuten.co.jp/@0_mall/onitsukatiger/cabinet/item/866/kp2866-01_1.jpg?_ex=128x128")
+    with Session(engine) as session:
+        url = session.query(Product).filter(Product.id == 1).first()
+    img = fetch_image(url.image_url)
     if img:
-        img.show()  
+        img.show()
+
 if __name__ == "__main__":
     main()
