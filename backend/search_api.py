@@ -1,11 +1,18 @@
 import io
 from PIL import Image
 import faiss
-from fastapi import FastAPI
+from fastapi import FastAPI, File, Form, UploadFile
+from numpy._core.multiarray import scalar
 import pandas as pd
 import requests
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
+import torch
 from transformers import CLIPModel, CLIPProcessor
+from models import Product
+
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
 
 # DB FAISS　を設定
 DATABASE_URL = "postgresql+psycopg2://postgres:postgres@localhost:5432/rakuten"
@@ -31,11 +38,52 @@ def load_image(src: str) -> Image.Image:
     else:
         return Image.open(src).convert("RGB")
 
-def search():
-    image_url = "https://thumbnail.image.rakuten.co.jp/@0_mall/onitsukatiger/cabinet/item/866/kp2866-01_1.jpg?_ex=128x128"
-    img = load_image(image_url)
-    if img:
-        img.show()
+@app.post("/api/search")
+async def search(
+    image_url: str = Form(None),
+    file: UploadFile = File(None),
+    topk: int = Form(5)
+    ):
+    """画像URL or ファイルを受け取り、類似画像を返す"""
+    if not image_url and not file:
+        return {"error": "画像URLまたは、ファイルを指定してください"}
 
-if __name__ == "__main__":
-    search()
+    if image_url:
+        img = load_image(image_url)
+    else:
+        img = Image.open(io.BytesIO(await file.read())).convert("RGB")    
+    
+     # CLIP埋め込み
+    inputs = processor(images=img, return_tensors="pt")
+    with torch.no_grad():
+        q = model.get_image_features(**inputs)
+        q = q / q.norm(p=2, dim=-1, keepdim=True)
+        q = q.cpu().numpy().astype("float32")
+
+    # 類似検索
+    Distance, IndexID = index.search(q, topk)
+    faiss_ids = IndexID[0]
+    scores = Distance[0]
+
+    id_map_dict = id_map.set_index("faiss_id")["product_id"].to_dict()
+    result = []
+    with Session(engine) as session:
+        for fid ,score in zip(faiss_ids, scores):
+            pid = int(id_map_dict.get(fid, -1))
+            if pid == -1:
+                continue
+            row = session.execute(
+                select(Product).where(Product.id == pid)
+            ).scalar_one_or_none()
+            if not row:
+                continue
+            result.append({
+                 "score": float(score),
+                "name": row.product_name,
+                "price": row.price,
+                "image_url": row.image_url,
+                "product_url": row.product_url,
+                "shop": row.shop_name,
+            })
+
+        return {"results": result}
