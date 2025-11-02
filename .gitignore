@@ -1,8 +1,181 @@
-# Pythonバイトコード
+# ===============================
+# 🌐 macOS / OSレベル
+# ===============================
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===============================
+# 🐍 Python / FastAPI Backend
+# ===============================
 __pycache__/
-
-# 仮想環境
-.venv/
-
-# 特定の設定ファイルを無視
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
 .env
+.venv/
+venv/
+env/
+ENV/
+.Python
+.pytest_cache/
+.mypy_cache/
+coverage/
+htmlcov/
+pytest_cache/
+*.cover
+*.log
+
+# DB・キャッシュ・テンポラリ
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*.csv
+*.jsonl
+*.tmp
+*.bak
+*.pid
+*.lock
+*.cache
+*.log
+
+# FAISS / Embedding / MLモデル
+*.npy
+*.npz
+*.pkl
+*.pt
+*.bin
+*.ckpt
+*.h5
+*.weights
+*.index
+faiss.index
+id_map.csv
+checkpoints/
+outputs/
+runs/
+logs/
+wandb/
+mlruns/
+
+# Docker関連
+docker-compose.override.yml
+*.pid
+*.sock
+*.dbdata/
+*.tar
+*.img
+*.log
+
+# ===============================
+# 🧠 Backend 専用パス
+# ===============================
+backend/__pycache__/
+backend/.env
+backend/faiss.index
+backend/id_map.csv
+backend/tmp/
+backend/logs/
+backend/*.db
+backend/__pycache__/
+backend/*.csv
+backend/*.log
+backend/*.cache
+backend/__pycache__/
+
+# ===============================
+# 🧩 Node.js / Next.js Frontend
+# ===============================
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/dist/
+frontend/.turbo/
+frontend/.vercel/
+frontend/.swc/
+frontend/.parcel-cache/
+frontend/.eslintcache
+frontend/.stylelintcache
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/package-lock.json
+frontend/.env
+frontend/.local/
+frontend/.DS_Store
+frontend/.cache/
+
+# ===============================
+# 🧱 開発環境 / エディタ
+# ===============================
+.vscode/
+.idea/
+*.code-workspace
+*.iml
+
+# ===============================
+# 🧰 OS / システムファイル
+# ===============================
+*.swp
+*.swo
+*.orig
+*.bak
+*.tmp
+*.log
+*.trace
+*.old
+*.retry
+*.pid
+
+# ===============================
+# 🔒 セキュリティ系
+# ===============================
+.env
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.pub
+*.enc
+*.secrets
+*.token
+*.aws
+*.p8
+*.mobileprovision
+__MACOSX/
+
+# ===============================
+# 🧾 Python Tools
+# ===============================
+.tox/
+.nox/
+.coverage
+.cache/
+.pdm.toml
+poetry.lock
+Pipfile.lock
+
+# ===============================
+# 🧩 IDE設定・履歴
+# ===============================
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# ===============================
+# 📦 その他再生成できるもの
+# ===============================
+build/
+dist/
+tmp/
+temp/
+__snapshots__/

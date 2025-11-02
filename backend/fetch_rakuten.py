@@ -28,7 +28,7 @@ def fetch_items(keyword , pages):
         print(f"🔎 Fetching page {page}...")
 
         if response.status_code == 429:
-            print("⚠️ APIリクエスト制限 5秒待機してリトライ...")
+            print("APIリクエスト制限 5秒待機してリトライ...")
             time.sleep(5)
             continue
 

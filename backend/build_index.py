@@ -25,8 +25,8 @@ def fetch_image(url):
         response = requests.get(url,timeout=10)
         response.raise_for_status()
         return Image.open(io.BytesIO(response.content)).convert("RGB")
-    except Exception:
-        print(" 画像の読み込みに失敗しました:", url)
+    except Exception as error:
+        print(" 画像の読み込みに失敗しました:", url,"|",error)
         return None
 
 def main():
