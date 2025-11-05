@@ -2,6 +2,7 @@ import io
 from PIL import Image
 import faiss
 from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from numpy._core.multiarray import scalar
 import pandas as pd
 import requests
@@ -11,8 +12,25 @@ import torch
 from transformers import CLIPModel, CLIPProcessor
 from models import Product
 
+app = FastAPI(title = "Sneaker Visual Search")
+# CROSを設定
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # ← すべてのオリジン（開発中はこれでOK）
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
+
+@app.middleware("http")
+async def log_cors(request, call_next):
+    print("🌐 Origin:", request.headers.get("origin"))
+    response = await call_next(request)
+    print("🔁 Response headers:", response.headers)
+    return response
 
 # DB FAISS　を設定
 DATABASE_URL = "postgresql+psycopg2://postgres:postgres@localhost:5432/rakuten"
@@ -27,7 +45,6 @@ id_map = pd.read_csv(IDMAP_PATH)
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
-app = FastAPI(title = "Sneaker Visual Search")
 
 def load_image(src: str) -> Image.Image:
     """URLまたはパスから画像を取得"""
@@ -42,7 +59,7 @@ def load_image(src: str) -> Image.Image:
 async def search(
     image_url: str = Form(None),
     file: UploadFile = File(None),
-    topk: int = Form(5)
+    topk: int = Form(1)
     ):
     """画像URL or ファイルを受け取り、類似画像を返す"""
     if not image_url and not file:
