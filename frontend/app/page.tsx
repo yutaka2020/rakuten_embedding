@@ -3,9 +3,10 @@
 import { useState } from "react";
 
 export default function Home() {
-  const [imageUrl, setImageUrl] = useState("")
+  const [imageUrl, setImageUrl] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<any[]>([]);
 
   // 検索ボタンハ押下時処理
   const handleSearch = async () => {
@@ -15,7 +16,8 @@ export default function Home() {
     }
 
     setError("");
-    setLoading(true)
+    setLoading(true);
+    setResults([]);
     try {
       const formData = new FormData();
       formData.append("image_url", imageUrl);
@@ -30,24 +32,31 @@ export default function Home() {
     } catch (err) {
       console.error("通信エラー", err);
       setError("サーバーとの通信に失敗しました")
+      console.error(err)
     } finally {
       setLoading(false);
     }
 
   }
   return (
-    <main>
-      <h1>AI Search</h1>
-      <div>
+    <main className="min-h-screen bg-gray-50 p-80">
+      <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">Image Search</h1>
+      <div className="flex justify-center mb-6 gap-2">
         <input
           type="text"
           placeholder="画像URLを入力してください"
           value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)} />
-        <button onClick={handleSearch}>検索</button>
+          onChange={(e) => setImageUrl(e.target.value)}
+          className="w-80 p-2 border border-gray-300 rounded-lg text-black
+          foucus:outline-none foucus:ring-2 foucus:ring-bulue-400" />
+        <button
+          onClick={handleSearch}
+          disabled={loading}
+          className={`px-4 py-2 rounded-lg font-semibold text-white ${loading ? "bg-blue-300 cursor-not-allowed"
+            : "bg-blue-500 hover:bg-blue-600"}`}>{loading ? "検索中..." : "検索"}</button>
       </div>
       {error && (
-        <p>{error}</p>
+        <p className="text-center text-red-500 font-medium mb-4">{error}</p>
       )}
       {imageUrl && (
         <p>入力値：<b>{imageUrl}</b></p>
