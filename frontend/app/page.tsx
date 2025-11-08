@@ -29,6 +29,12 @@ export default function Home() {
 
       const data = await res.json();
       console.log("サーバーからのレスポンス", data);
+      if (data.error) {
+        setError(data.err)
+      } else {
+        setResults(data.results)
+      }
+
     } catch (err) {
       console.error("通信エラー", err);
       setError("サーバーとの通信に失敗しました")
@@ -58,8 +64,26 @@ export default function Home() {
       {error && (
         <p className="text-center text-red-500 font-medium mb-4">{error}</p>
       )}
-      {imageUrl && (
-        <p>入力値：<b>{imageUrl}</b></p>
+
+      {results.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {results.map((item, i) => (
+            <div key={i} className="bg-white p-4 rounded-xl shadow-md boeder border-gray-100">
+              <img src={item.image_url} alt={item.name} className="w-full h-48 object-cover rounded-lg" />
+              <h2 className="font-semibold text-lg mt-2 text-gray-800 line-clamp-2">{item.name}</h2>
+              <p className="text-gray-600">値段 : {item.price}</p>
+              <p className="text-gray-500">ブランド : {item.shop}</p>
+              <a href={item.product_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">
+                商品ページへ
+              </a>
+            </div>
+          ))}
+        </div>
+      ) : (
+        !loading &&
+        !error && (
+          <p className="text-center text-gray-500 mt-10">検索結果がまだありません</p>
+        )
       )}
     </main>
   )
