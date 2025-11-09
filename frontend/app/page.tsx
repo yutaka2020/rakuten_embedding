@@ -1,8 +1,9 @@
 "use client";
 
-import { Mode } from "fs";
-import { url } from "inspector";
 import { useState } from "react";
+
+type Mode = "url" | "file";
+
 
 export default function Home() {
   const [imageUrl, setImageUrl] = useState("");
@@ -11,7 +12,6 @@ export default function Home() {
   const [results, setResults] = useState<any[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<Mode>("url");
-
 
   const onSwitch = (m: Mode) => {
     setMode(m);
@@ -66,7 +66,7 @@ export default function Home() {
     }
 
   }
-  function InputField({ mode, imageUrl, setImageUrl, setFile }: any) {
+  function InputField({ mode, imageUrl, setImageUrl, file, setFile }: any) {
     switch (mode) {
       case "url":
         return (<input
@@ -79,18 +79,28 @@ export default function Home() {
 
       case "file":
         return (
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="block text-sm text-gray-700
-            file:mr-4 file:py-2 file:px-4
-            file:rounded-md file:border-0
-            file:text-sm file:font-semibold
-            file:bg-blue-100 file:text-blue-700
-            hover:file:bg-blue-200"
-          />
-        )
+          <div className="flex flex-col items-center gap-2">
+            <input
+              id="fileUpload"
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="hidden"
+            />
+            <label htmlFor="fileUpload"
+              className="cursor-pointer bg-blue-100 text-blue-700 px-4 py-2 rounded-md hover:bg-blue-200 font-semibold" >画像を選択</label>
+            {file ? (
+              <p className="text-gray-700 text-sm">
+                選択されたファイル:{" "}
+                <span className="font-semibold">{file.name}</span>
+              </p>
+            ) : (
+              <p className="text-gray-400 text-sm">ファイルが選択されていません</p>
+            )}
+          </div>
+        );
+      default:
+        return null;
     }
   }
 
@@ -106,9 +116,7 @@ export default function Home() {
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             onClick={() => onSwitch("url")}
-          >
-            URL入力
-          </button>
+          >URL入力</button>
           <button
             className={`px-4 py-2 text-sm font-semibold ${mode === "file"
               ? "bg-white text-blue-600"
@@ -121,11 +129,12 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="flex justify-center mb-6 gap-2">
+      <div className="flex items-start justify-center mb-6 gap-2">
         <InputField
           mode={mode}
           imageUrl={imageUrl}
           setImageUrl={setImageUrl}
+          file={file}
           setFile={setFile} />
         <button
           onClick={handleSearch}
@@ -139,6 +148,17 @@ export default function Home() {
 
       {results.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {file && (
+            <div className="bg-white p-4 rounded-xl shadow-md border border-gray-100">
+              <img
+                src={URL.createObjectURL(file)}
+                alt="preview"
+                className="w-full h-48 object-cover rounded-lg"
+              />
+              <h2 className="font-semibold text-lg mt-2 text-gray-800">検索対象画像</h2>
+            </div>
+          )}
+
           {results.map((item, i) => (
             <div key={i} className="bg-white p-4 rounded-xl shadow-md boeder border-gray-100">
               <img src={item.image_url} alt={item.name} className="w-full h-48 object-cover rounded-lg" />
