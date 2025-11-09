@@ -1,5 +1,7 @@
 "use client";
 
+import { Mode } from "fs";
+import { url } from "inspector";
 import { useState } from "react";
 
 export default function Home() {
@@ -7,20 +9,40 @@ export default function Home() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<Mode>("url");
+
+
+  const onSwitch = (m: Mode) => {
+    setMode(m);
+    setError("")
+    setResults([])
+
+    if (m === "url") setFile(null);
+    if (m === "file") setImageUrl("");
+  }
 
   // 検索ボタンハ押下時処理
   const handleSearch = async () => {
-    if (!imageUrl.trim()) {
+    setError("");
+    setResults([]);
+
+    if (mode === "url" && !imageUrl.trim()) {
       setError("画像URLを入力してください")
       return;
     }
-
-    setError("");
+    if (mode === "file" && !file) {
+      setError("画像ファイルを選択してください")
+      return;
+    }
     setLoading(true);
-    setResults([]);
     try {
       const formData = new FormData();
-      formData.append("image_url", imageUrl);
+      if (mode === "url") {
+        formData.append("image_url", imageUrl);
+      } else if (file) {
+        formData.append("file", file);
+      }
 
       const res = await fetch("http://127.0.0.1:8000/api/search", {
         method: "POST",
@@ -44,17 +66,67 @@ export default function Home() {
     }
 
   }
-  return (
-    <main className="min-h-screen bg-gray-50 p-80">
-      <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">Image Search</h1>
-      <div className="flex justify-center mb-6 gap-2">
-        <input
+  function InputField({ mode, imageUrl, setImageUrl, setFile }: any) {
+    switch (mode) {
+      case "url":
+        return (<input
           type="text"
           placeholder="画像URLを入力してください"
           value={imageUrl}
           onChange={(e) => setImageUrl(e.target.value)}
-          className="w-80 p-2 border border-gray-300 rounded-lg text-black
-          foucus:outline-none foucus:ring-2 foucus:ring-bulue-400" />
+          className="w-80 p-2 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />);
+
+      case "file":
+        return (
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            className="block text-sm text-gray-700
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-md file:border-0
+            file:text-sm file:font-semibold
+            file:bg-blue-100 file:text-blue-700
+            hover:file:bg-blue-200"
+          />
+        )
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-gray-50 p-80">
+      <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">Image Search</h1>
+
+      <div className="mx-auto w-full max-w-2xl mb-6">
+        <div className="inline-flex rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+          <button
+            className={`px-4 py-2 text-sm font-semibold ${mode === "url"
+              ? "bg-white text-blue-600"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            onClick={() => onSwitch("url")}
+          >
+            URL入力
+          </button>
+          <button
+            className={`px-4 py-2 text-sm font-semibold ${mode === "file"
+              ? "bg-white text-blue-600"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            onClick={() => onSwitch("file")}
+          >
+            画像アップロード
+          </button>
+        </div>
+      </div>
+
+      <div className="flex justify-center mb-6 gap-2">
+        <InputField
+          mode={mode}
+          imageUrl={imageUrl}
+          setImageUrl={setImageUrl}
+          setFile={setFile} />
         <button
           onClick={handleSearch}
           disabled={loading}
