@@ -25,13 +25,6 @@ app.add_middleware(
 torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
 
-@app.middleware("http")
-async def log_cors(request, call_next):
-    print("🌐 Origin:", request.headers.get("origin"))
-    response = await call_next(request)
-    print("🔁 Response headers:", response.headers)
-    return response
-
 # DB FAISS　を設定
 DATABASE_URL = "postgresql+psycopg2://postgres:postgres@localhost:5432/rakuten"
 FAISS_PATH = "faiss.index"
@@ -59,7 +52,7 @@ def load_image(src: str) -> Image.Image:
 async def search(
     image_url: str = Form(None),
     file: UploadFile = File(None),
-    topk: int = Form(1)
+    topk: int = Form(8)
     ):
     """画像URL or ファイルを受け取り、類似画像を返す"""
     if not image_url and not file:
