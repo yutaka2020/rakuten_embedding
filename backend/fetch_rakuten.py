@@ -6,6 +6,11 @@ from sqlalchemy import create_engine
 from db_setup import DATABASE_URL,Session_Local
 from models import Base,Product
 
+# 検索キーワード
+keyword =("サンダル")
+# 検索数
+pages = 10
+
 # .env読み込み
 load_dotenv()
 APPLICATION_ID = os.getenv("RAKUTEN_APPLICATION_ID")
@@ -29,26 +34,33 @@ def fetch_items(keyword , pages):
 
         if response.status_code == 429:
             print("APIリクエスト制限 5秒待機してリトライ...")
-            time.sleep(5)
+            time.sleep(2)
             continue
 
-    if response.status_code != 200:
-        print("Error:", response.status_code, response.text)
-        return result
+        if response.status_code != 200:
+            print("Error:", response.status_code, response.text)
+            continue
 
-    data = response.json()
-    items = data.get("Items",[])
-    for i in items:
-        item = i.get("Item",{})
-        result.append({
+        data = response.json()
+        items = data.get("Items",[])
+
+        for i in items:
+            item = i.get("Item",{})
+            result.append({
                 "product_id": item.get("itemCode", ""),
                 "product_name": item.get("itemName", ""),
                 "image_url": item["mediumImageUrls"][0]["imageUrl"],
                 "product_url": item.get("itemUrl", ""),
                 "price": item.get("itemPrice", 0),
                 "shop_name": item.get("shopName", "")
-        })
-        time.sleep(2)
+            })
+            print(f"✅ Page {page} done → total {len(result)}")
+            time.sleep(2)
+
+        print(f"🎯 Total fetched: {len(result)} items")    
+        if len(items) == 0:
+            print(f"⚠️ Page {page} is empty, stopping early.")
+            break
     return result
 
 def save_to_db(items):
@@ -69,7 +81,7 @@ def save_to_db(items):
 
 def main():
     assert APPLICATION_ID, " .env に RAKUTEN_APPLICATION_ID が設定されていません"
-    items = fetch_items(keyword="スニーカー",pages=5)
+    items = fetch_items(keyword=keyword,pages=pages)
     save_to_db(items)
 
 if __name__ == "__main__":
