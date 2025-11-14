@@ -7,9 +7,9 @@ from db_setup import DATABASE_URL,Session_Local
 from models import Base,Product
 
 # 検索キーワード
-keyword =("サンダル")
+keyword =("サロモン スニーカー")
 # 検索数
-pages = 10
+pages = 3
 
 # .env読み込み
 load_dotenv()
@@ -55,9 +55,9 @@ def fetch_items(keyword , pages):
                 "shop_name": item.get("shopName", "")
             })
             print(f"✅ Page {page} done → total {len(result)}")
-            time.sleep(2)
+            time.sleep(0.5)
 
-        print(f"🎯 Total fetched: {len(result)} items")    
+        print(f"🎯 Total fetched: {len(result)} items")
         if len(items) == 0:
             print(f"⚠️ Page {page} is empty, stopping early.")
             break
