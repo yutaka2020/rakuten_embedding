@@ -73,12 +73,16 @@ def load_image(src: str) -> Image.Image:
 async def search(
     image_url: str = Form(None),
     file: UploadFile = File(None),
-    topk: int = Form(NumResult)
+    topk: int = Form(NumResult),
+    min_price: int = Form(None),
+    max_price: int = Form(None),
     ):
     """
     画像URL or ファイルを受け取り、
     CLIPで埋め込み → FAISSで類似検索 → DBから商品情報を返す
     """
+    print("min_price:", min_price, type(min_price))
+    print("max_price:", max_price, type(max_price))
 
     # 入力チェック
     if not image_url and not file:
@@ -111,9 +115,14 @@ async def search(
             pid = int(id_map_dict.get(fid, -1))
             if pid == -1:
                 continue
-            row = session.execute(
-                select(Product).where(Product.id == pid)
-            ).scalar_one_or_none()
+
+            query = select(Product).where(Product.id == pid)
+            if min_price:
+                query = query.where(Product.price >= min_price)
+            if max_price:
+                query = query.where(Product.price <= max_price)
+
+            row = session.execute(query).scalar_one_or_none()
             if not row:
                 continue
             result.append({

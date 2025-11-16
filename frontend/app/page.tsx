@@ -11,6 +11,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [file, setFile] = useState<File | null>(null);
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
 
   // 入力モード（URL or ファイル）
   const [mode, setMode] = useState<Mode>("url");
@@ -52,6 +54,10 @@ export default function Home() {
       } else if (file) {
         formData.append("file", file);
       }
+
+      // 最低価格と最高価格をフォームデータに追加
+      if (minPrice) formData.append("min_price", minPrice);
+      if (maxPrice) formData.append("max_price", maxPrice);
 
       // サーバーにリクエストを送信
       const res = await fetch("http://127.0.0.1:8000/api/search", {
@@ -157,6 +163,25 @@ export default function Home() {
           setImageUrl={setImageUrl}
           file={file}
           setFile={setFile} />
+
+        <div className="flex flex-col items-center gap-3 mb-6">
+
+          <input
+            type="number"
+            placeholder="最低価格（例：5000）"
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value)}
+            className="w-80 p-2 border border-gray-300 rounded-lg text-black"
+          />
+
+          <input
+            type="number"
+            placeholder="最高価格（例：15000）"
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value)}
+            className="w-80 p-2 border border-gray-300 rounded-lg text-black"
+          />
+        </div>
         <button
           onClick={handleSearch}
           disabled={loading}
