@@ -57,7 +57,7 @@ id_map = pd.read_csv(IDMAP_PATH)
 
 # CLIP モデル読み込み（画像 → ベクトル変換に使用）
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32", use_fast=True)
 
 
 def load_image(src: str) -> Image.Image:
