@@ -6,18 +6,33 @@ from sqlalchemy import create_engine
 from db_setup import DATABASE_URL,Session_Local
 from models import Base,Product
 
-# 検索キーワード
+# ===============================
+# 設定値
+# ===============================
+
+# 楽天APIで検索するキーワード
 keyword =("サロモン スニーカー")
-# 検索数
+# 楽天APIで検索するページ数（1ページあたり30件）
 pages = 3
 
-# .env読み込み
+# .env から環境変数を読み込み
 load_dotenv()
 APPLICATION_ID = os.getenv("RAKUTEN_APPLICATION_ID")
+# 楽天APIのエンドポイント
 API_URL = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601"
+# SQLAlchemyのエンジンを作成
 engine = create_engine(DATABASE_URL, future=True)
 
+
+# ===============================
+# 楽天APIから商品データを取得
+# ===============================
 def fetch_items(keyword , pages):
+    """
+    指定したキーワードで楽天商品検索APIを叩き、
+    ページごとにデータをまとめて返す。
+    """
+    # 商品データを格納するリスト
     result = []
     for page in range (1,pages + 1):
         params = {
@@ -27,23 +42,29 @@ def fetch_items(keyword , pages):
             "page": page,
             "imageFlag": 1,
             "format": "json",
-            "availability": 1,}
+            "availability": 1,
+        }
 
+        # 楽天APIを叩く
         response = requests.get(API_URL, params=params)
         print(f"🔎 Fetching page {page}...")
 
+        # 429エラーが発生した場合は5秒待機してリトライ
         if response.status_code == 429:
             print("APIリクエスト制限 5秒待機してリトライ...")
             time.sleep(2)
             continue
 
+        # 200以外の場合はエラーを出力してスキップ
         if response.status_code != 200:
             print("Error:", response.status_code, response.text)
             continue
 
+        # レスポンスをJSON形式に変換
         data = response.json()
         items = data.get("Items",[])
 
+        # 商品データをresultに追加
         for i in items:
             item = i.get("Item",{})
             result.append({
@@ -55,33 +76,53 @@ def fetch_items(keyword , pages):
                 "shop_name": item.get("shopName", "")
             })
             print(f"✅ Page {page} done → total {len(result)}")
-            time.sleep(0.5)
 
         print(f"🎯 Total fetched: {len(result)} items")
         if len(items) == 0:
             print(f"⚠️ Page {page} is empty, stopping early.")
             break
+        
+        # 0.5秒待機 APIリクエスト制限を避ける
+        time.sleep(0.5)
+
     return result
 
+# ===============================
+# DBに商品データを保存
+# ===============================
 def save_to_db(items):
+    """
+    items のリストを PostgreSQL に保存する。
+    product_id が重複している場合はスキップ。
+    """
     Base.metadata.create_all(bind=engine)
     session = Session_Local()
     try:
         for item in items:
+            # product_id が重複している場合はスキップ（同じ商品コードは保存しない）
             existing = session.query(Product).filter_by(product_id=item["product_id"]).first()
             if existing:
                 print(f"既存スキップ: {item['product_name']}")
                 continue
             product = Product(**item)
+            # 商品データをDBに追加
             session.add(product)
         session.commit()
         print(" データ保存完了！")
     finally:
         session.close()
 
+# ===============================
+# メイン関数
+# ===============================
 def main():
+    """
+    商品データを楽天APIから取得し、DBに保存する。
+    """
     assert APPLICATION_ID, " .env に RAKUTEN_APPLICATION_ID が設定されていません"
+    # 商品データを楽天APIから取得
     items = fetch_items(keyword=keyword,pages=pages)
+    # 商品データをDBに保存
     save_to_db(items)
 
 if __name__ == "__main__":
