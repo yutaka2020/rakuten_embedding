@@ -11,32 +11,41 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [file, setFile] = useState<File | null>(null);
+
+  // 入力モード（URL or ファイル）
   const [mode, setMode] = useState<Mode>("url");
 
+  // 入力モード切り替え
   const onSwitch = (m: Mode) => {
     setMode(m);
     setError("")
     setResults([])
 
+    // モード切り替え時ファイルをクリア、URLをクリア
     if (m === "url") setFile(null);
     if (m === "file") setImageUrl("");
   }
 
-  // 検索ボタンハ押下時処理
+  // 検索ボタンが押下された時の処理
   const handleSearch = async () => {
     setError("");
     setResults([]);
 
+    // 入力モードがURLの場合はURLが入力されているかチェック
     if (mode === "url" && !imageUrl.trim()) {
       setError("画像URLを入力してください")
       return;
     }
+    // 入力モードがファイルの場合はファイルが選択されているかチェック
     if (mode === "file" && !file) {
       setError("画像ファイルを選択してください")
       return;
     }
+
     setLoading(true);
+
     try {
+      // フォームデータを作成
       const formData = new FormData();
       if (mode === "url") {
         formData.append("image_url", imageUrl);
@@ -44,6 +53,7 @@ export default function Home() {
         formData.append("file", file);
       }
 
+      // サーバーにリクエストを送信
       const res = await fetch("http://127.0.0.1:8000/api/search", {
         method: "POST",
         body: formData,
@@ -51,6 +61,8 @@ export default function Home() {
 
       const data = await res.json();
       console.log("サーバーからのレスポンス", data);
+
+      // エラーがあった場合はエラーメッセージをセット
       if (data.error) {
         setError(data.err)
       } else {
@@ -66,8 +78,13 @@ export default function Home() {
     }
 
   }
+  // ==============================
+  // 入力フィールド（URL or ファイル）を表示するコンポーネント
+  // ==============================
   function InputField({ mode, imageUrl, setImageUrl, file, setFile }: any) {
+    // 入力モードに応じて表示を切り替え
     switch (mode) {
+      // URL入力フィールド
       case "url":
         return (<input
           type="text"
@@ -77,6 +94,7 @@ export default function Home() {
           className="w-80 p-2 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
         />);
 
+      // ファイル入力フィールド
       case "file":
         return (
           <div className="flex flex-col items-center gap-2">
@@ -104,6 +122,9 @@ export default function Home() {
     }
   }
 
+  // ==============================
+  // UIを描画するコンポーネント
+  // ==============================
   return (
     <main className="min-h-screen bg-gray-50 p-80">
       <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">Image Search</h1>
