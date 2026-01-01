@@ -61,13 +61,28 @@ processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32", use_fa
 
 
 def load_image(src: str) -> Image.Image:
-    """URLまたはパスから画像を受け取る"""
-    if src.startswith("http"):
-        request = requests.get(src, timeout = 15)
-        request.raise_for_status()
-        return Image.open(io.BytesIO(request.content)).convert("RGB")
-    else:
-        return Image.open(src).convert("RGB")
+    """URLから画像を取得（デバッグ付き）"""
+    print("=== image_url debug ===")
+    print("url:", src)
+    print("length:", len(src))
+    print("=======================")
+
+    if not src.startswith("http"):
+        raise ValueError("image_url は http(s) で始まる必要があります")
+
+    response = requests.get(src, timeout=15)
+    print("status_code:", response.status_code)
+    print("content_type:", response.headers.get("Content-Type"))
+    print("bytes:", len(response.content))
+    print("head:", response.content[:32])
+    print("=======================")
+
+    response.raise_for_status()
+
+    try:
+        return Image.open(io.BytesIO(response.content)).convert("RGB")
+    except Exception as e:
+        raise ValueError(f"URLから取得したデータを画像として読めません: {e}")
 
 @app.post("/api/search")
 async def search(
@@ -89,10 +104,27 @@ async def search(
         return {"error": "画像URLまたは、ファイルを指定してください"}
 
     # 画像読み込み
+    
     if image_url:
         img = load_image(image_url)
     else:
-        img = Image.open(io.BytesIO(await file.read())).convert("RGB")    
+        data = await file.read()
+
+        print("=== upload debug ===")
+        print("filename:", file.filename)
+        print("content_type:", file.content_type)
+        print("bytes:", len(data))
+        print("head:", data[:32])
+        print("====================")
+
+    if len(data) == 0:
+        return {"error": "アップロードされたファイルが空です"}
+
+    try:
+        img = Image.open(io.BytesIO(data)).convert("RGB")
+    except Exception as e:
+        return {"error": "画像として読めません", "detail": str(e)}
+
     
      # CLIP埋め込み（画像 → ベクトル）
     inputs = processor(images=img, return_tensors="pt")
