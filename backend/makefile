@@ -1,0 +1,3 @@
+run:
+	KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+	uvicorn main:app --reload
