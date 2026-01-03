@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+torch
+transformers
+faiss-cpu
+pillow
+pillow-heif
+sqlalchemy
+psycopg2-binary
+pandas
+requests
+python-dotenv
+torchvision
+python-multipart
