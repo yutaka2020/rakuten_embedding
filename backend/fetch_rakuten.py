@@ -2,7 +2,7 @@ import requests
 import os
 import time
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine,select
 from db_setup import DATABASE_URL,Session_Local
 from models import Base,Product
 
@@ -11,9 +11,9 @@ from models import Base,Product
 # ===============================
 
 # 楽天APIで検索するキーワード
-keyword =("サロモン スニーカー")
+keyword =("muji スニーカー")
 # 楽天APIで検索するページ数（1ページあたり30件）
-pages = 3
+pages = 10
 
 # .env から環境変数を読み込み
 load_dotenv()
@@ -92,23 +92,44 @@ def fetch_items(keyword , pages):
 # ===============================
 def save_to_db(items):
     """
-    items のリストを PostgreSQL に保存する。
-    product_id が重複している場合はスキップ。
+    items を PostgreSQL に保存する。
+    - 同一バッチ内の重複(product_id)を除去
+    - DBに既にあるproduct_idも除外
     """
     Base.metadata.create_all(bind=engine)
     session = Session_Local()
+
     try:
+        # 1) 同一バッチ内の重複を除去（後勝ち）
+        unique_map = {}
         for item in items:
-            # product_id が重複している場合はスキップ（同じ商品コードは保存しない）
-            existing = session.query(Product).filter_by(product_id=item["product_id"]).first()
-            if existing:
-                print(f"既存スキップ: {item['product_name']}")
-                continue
-            product = Product(**item)
-            # 商品データをDBに追加
-            session.add(product)
+            pid = item.get("product_id")
+            if pid:
+                unique_map[pid] = item
+        items = list(unique_map.values())
+
+        # 2) 既存product_idを一括取得して除外（N回SELECTしない）
+        pids = [it["product_id"] for it in items if it.get("product_id")]
+        if pids:
+            existing_pids = set(
+                session.execute(
+                    select(Product.product_id).where(Product.product_id.in_(pids))
+                ).scalars().all()
+            )
+        else:
+            existing_pids = set()
+
+        new_items = [it for it in items if it["product_id"] not in existing_pids]
+        print(f"🧺 fetched={len(items)} existing={len(existing_pids)} insert={len(new_items)}")
+
+        # 3) 追加してコミット
+        session.add_all([Product(**it) for it in new_items])
         session.commit()
-        print(" データ保存完了！")
+        print("✅ データ保存完了！")
+
+    except Exception as e:
+        session.rollback()
+        raise
     finally:
         session.close()
 
