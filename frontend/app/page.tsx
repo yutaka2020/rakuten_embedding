@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { InputField } from "./components/InputField";
+
 
 type Mode = "url" | "file";
 
@@ -90,49 +92,6 @@ export default function Home() {
       setLoading(false);
     }
 
-  }
-  // ==============================
-  // 入力フィールド（URL or ファイル）を表示するコンポーネント
-  // ==============================
-  function InputField({ mode, imageUrl, setImageUrl, file, setFile }: any) {
-    // 入力モードに応じて表示を切り替え
-    switch (mode) {
-      // URL入力フィールド
-      case "url":
-        return (<input
-          type="text"
-          placeholder="画像URLを入力してください"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          className="w-80 p-2 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />);
-
-      // ファイル入力フィールド
-      case "file":
-        return (
-          <div className="flex flex-col items-center gap-2">
-            <input
-              id="fileUpload"
-              type="file"
-              accept="image/*"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="hidden"
-            />
-            <label htmlFor="fileUpload"
-              className="cursor-pointer bg-blue-100 text-blue-700 px-4 py-2 rounded-md hover:bg-blue-200 font-semibold" >画像を選択</label>
-            {file ? (
-              <p className="text-gray-700 text-sm">
-                選択されたファイル:{" "}
-                <span className="font-semibold">{file.name}</span>
-              </p>
-            ) : (
-              <p className="text-gray-400 text-sm">ファイルが選択されていません</p>
-            )}
-          </div>
-        );
-      default:
-        return null;
-    }
   }
 
   // ==============================
