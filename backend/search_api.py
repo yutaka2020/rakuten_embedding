@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 import torch
 from transformers import CLIPModel, CLIPProcessor
 from models import Product
+import os
 
 # ===============================================================
 # 　Sneaker Visual Search API
@@ -47,7 +48,10 @@ torch.set_num_interop_threads(1)
 # PostgreSQLで商品情報を取得し、
 # FAISS（ベクトル検索エンジン）で類似画像を探索する。
 # ---------------------------------------------------------------
-DATABASE_URL = "postgresql+psycopg2://postgres:postgres@localhost:5432/rakuten"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+psycopg2://postgres:postgres@localhost:5432/rakuten"
+)
 FAISS_PATH = "faiss.index"
 IDMAP_PATH = "id_map.csv"
 
@@ -100,33 +104,19 @@ async def search(
     print("max_price:", max_price, type(max_price))
 
     # 入力チェック
-    if not image_url and not file:
-        return {"error": "画像URLまたは、ファイルを指定してください"}
+    if (not image_url or not image_url.strip()) and file is None:
+        return {"error": "画像URLまたはファイルを指定してください"}
 
     # 画像読み込み
-    
-    if image_url:
-        img = load_image(image_url)
-    else:
+    if image_url and image_url.strip():
+        img = load_image(image_url.strip())
+    elif file is not None:
         data = await file.read()
-
-        print("=== upload debug ===")
-        print("filename:", file.filename)
-        print("content_type:", file.content_type)
-        print("bytes:", len(data))
-        print("head:", data[:32])
-        print("====================")
-
-    if len(data) == 0:
-        return {"error": "アップロードされたファイルが空です"}
-
-    try:
+        if len(data) == 0:
+            return {"error": "アップロードされたファイルが空です"}
         img = Image.open(io.BytesIO(data)).convert("RGB")
-    except Exception as e:
-        return {"error": "画像として読めません", "detail": str(e)}
 
-    
-     # CLIP埋め込み（画像 → ベクトル）
+    # CLIP埋め込み（画像 → ベクトル）
     inputs = processor(images=img, return_tensors="pt")
     with torch.no_grad():
         q = model.get_image_features(**inputs)

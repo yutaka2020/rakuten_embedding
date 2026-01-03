@@ -11,8 +11,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [file, setFile] = useState<File | null>(null);
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
+  const [minPrice, setMinPrice] = useState<string>("");
+  const [maxPrice, setMaxPrice] = useState<string>("");
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
   // 入力モード（URL or ファイル）
   const [mode, setMode] = useState<Mode>("url");
@@ -60,10 +62,15 @@ export default function Home() {
       if (maxPrice) formData.append("max_price", maxPrice);
 
       // サーバーにリクエストを送信
-      const res = await fetch("http://127.0.0.1:8000/api/search", {
+      const res = await fetch(`${API_BASE}/api/search`, {
         method: "POST",
         body: formData,
       });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "サーバーからのエラーが発生しました");
+      }
 
       const data = await res.json();
       console.log("サーバーからのレスポンス", data);

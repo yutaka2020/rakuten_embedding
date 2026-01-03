@@ -10,7 +10,10 @@ from dotenv import load_dotenv
 
 # .env から環境変数を読み込む
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+psycopg2://postgres:postgres@localhost:5432/rakuten"
+)
 
 # SQLAlchemy のエンジンを作成（DB への実際の接続を管理）
 engine = create_engine(DATABASE_URL,future=True)
