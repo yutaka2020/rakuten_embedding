@@ -34,7 +34,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # CROSを設定（Next.jsなど他のフロントエンドからの通信を許可）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://rakuten-embedding-ench.vercel.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
