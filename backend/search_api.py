@@ -1,10 +1,8 @@
 import io
-from PIL import Image
+from PIL import Image,UnidentifiedImageError
 import faiss
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from numpy._core.multiarray import scalar
-import pandas as pd
 import requests
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
@@ -12,6 +10,8 @@ import torch
 from transformers import CLIPModel, CLIPProcessor
 from models import Product
 import os
+from fastapi.responses import JSONResponse
+
 
 # ===============================================================
 # 　Sneaker Visual Search API
@@ -21,10 +21,15 @@ import os
 
 
 # 返す検索上位件数定義
-NumResult = 8 
+NumResult = 9
 
 # FastAPIアプリ作成
 app = FastAPI(title = "Sneaker Visual Search")
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
+
 
 # CROSを設定（Next.jsなど他のフロントエンドからの通信を許可）
 app.add_middleware(
@@ -34,6 +39,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp"}  
+ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp"}  
+
+def validate_upload(file: UploadFile):
+    name = (file.filename or "").lower()
+    ext = "." + name.split(".")[-1] if "." in name else ""
+
+    # 拡張子チェック
+    if ext not in ALLOWED_EXT:
+        raise HTTPException(status_code=400, detail=f"対応外の拡張子です（{', '.join(sorted(ALLOWED_EXT))} のみ）")
+
+    # Content-Typeチェック（ブラウザが送ってくるやつ）
+    ctype = (file.content_type or "").lower()
+    if ctype and ctype not in ALLOWED_MIME:
+        raise HTTPException(status_code=400, detail=f"対応外のファイル形式です（Content-Type: {ctype}）")
+
 
 # ---------------------------------------------------------------
 # PyTorchの並列処理設定
@@ -53,11 +75,10 @@ DATABASE_URL = os.getenv(
     "postgresql+psycopg2://postgres:postgres@localhost:5432/rakuten"
 )
 FAISS_PATH = "faiss.index"
-IDMAP_PATH = "id_map.csv"
 
 engine = create_engine(DATABASE_URL,future=True)
 index =faiss.read_index(FAISS_PATH)
-id_map = pd.read_csv(IDMAP_PATH)
+# FAISS ID → product_id 対応表を起動時に1回だけ作成（パフォーマンス最適化）
 
 # CLIP モデル読み込み（画像 → ベクトル変換に使用）
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
@@ -111,10 +132,22 @@ async def search(
     if image_url and image_url.strip():
         img = load_image(image_url.strip())
     elif file is not None:
+        validate_upload(file)
+
         data = await file.read()
         if len(data) == 0:
-            return {"error": "アップロードされたファイルが空です"}
-        img = Image.open(io.BytesIO(data)).convert("RGB")
+            raise HTTPException(status_code=400, detail="アップロードされたファイルが空です")
+
+        try:
+            img = Image.open(io.BytesIO(data)).convert("RGB")
+        except UnidentifiedImageError:
+            raise HTTPException(status_code=400, detail="画像として読み込めませんでした（対応外または破損しています）")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"画像の読み込みに失敗しました: {e}")
+    else:
+        # この分岐には到達しないはず（入力チェックで既にエラーを返している）
+        raise HTTPException(status_code=400, detail="画像URLまたはファイルを指定してください")
+
 
     # CLIP埋め込み（画像 → ベクトル）
     inputs = processor(images=img, return_tensors="pt")
@@ -126,29 +159,40 @@ async def search(
 
     # # 類似検索（FAISSで上位topk件を検索）
     Distance, IndexID = index.search(q, topk)
-    faiss_ids = IndexID[0]
+    print("FAISS IDs sample:", IndexID[0][:10])
+    product_ids = IndexID[0]
     scores = Distance[0]
 
-    # FAISS ID → product_id 対応表を使ってDBから情報を取得
-    id_map_dict = id_map.set_index("faiss_id")["product_id"].to_dict()
     result = []
+
     with Session(engine) as session:
-        for fid ,score in zip(faiss_ids, scores):
-            pid = int(id_map_dict.get(fid, -1))
+        # 有効なproduct_idのみを抽出（-1を除外）
+        valid_ids = [int(pid) for pid in product_ids if pid != -1]
+        
+        if not valid_ids:
+            return {"results": []}
+        
+        # まとめて取得
+        query = select(Product).where(Product.id.in_(valid_ids))
+        if min_price:
+            query = query.where(Product.price >= min_price)
+        if max_price:
+            query = query.where(Product.price <= max_price)
+        
+        rows = session.execute(query).scalars().all()
+        
+        # product_idをキーとした辞書を作成（高速検索のため）
+        product_dict = {row.id: row for row in rows}
+        
+        # 元の順序を保持しながら結果を構築
+        for pid, score in zip(product_ids, scores):
             if pid == -1:
                 continue
-
-            query = select(Product).where(Product.id == pid)
-            if min_price:
-                query = query.where(Product.price >= min_price)
-            if max_price:
-                query = query.where(Product.price <= max_price)
-
-            row = session.execute(query).scalar_one_or_none()
+            row = product_dict.get(int(pid))
             if not row:
                 continue
             result.append({
-                 "score": float(score),
+                "score": float(score),
                 "name": row.product_name,
                 "price": row.price,
                 "image_url": row.image_url,
